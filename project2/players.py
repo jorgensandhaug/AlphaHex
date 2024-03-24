@@ -120,12 +120,14 @@ class HumanPlayer(Player):
 
     def get_action(self, state, previous_action, previous_action_probs):
         print("-------------------"*4)
-        print(f"Previous action probs: {state.tostr(probs_array=previous_action_probs)}")
-        # Now print the action probabilities in the two-dimensional array. Pretty print and round to 2 decimal places.
-        print(f"Action probs in 2D array:\n{np.round(previous_action_probs.reshape(state.board_size, state.board_size), 3)}")   
-    
-        print(f"Current state: {state.tostr(last_action=previous_action)}")
+        if previous_action:
+            print(f"Previous action probs: {state.tostr(probs_array=previous_action_probs)}")
+            # Now print the action probabilities in the two-dimensional array. Pretty print and round to 2 decimal places.
+            print(f"Action probs in 2D array:\n{np.round(previous_action_probs.reshape(state.board_size, state.board_size), 3)}")   
+        
+            print(f"Current state: {state.tostr(last_action=previous_action)}")
         print(f"Player {state.player_turn}'s turn.")
+
         state.plot()
         while True:
             action_input = input("Enter action (e.g., a1): ")

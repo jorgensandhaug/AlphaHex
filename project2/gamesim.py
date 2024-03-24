@@ -12,6 +12,8 @@ def run(initial_game_state, policies, num_games, debug, use_tqdm=True, pass_prev
         game = initial_game_state.clone()
         first_action = None
 
+        previous_action = None
+        previous_action_probs = None
 
         while not game.is_terminal():
             if debug==2:
