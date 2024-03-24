@@ -11,13 +11,13 @@
     "num_tournament_games": 4,
     "tournament_last_n_games": null,
     "mt_threads": 10,
-    "start_training_from_file": "weights/cnn/7_3_8_32/anet_weights_286_300.pth",
+    "start_training_from_file": "weights/cnn/7_3_8_32/anet_weights_383_0.pth",
     "human_against_acnet": {
         "use_mcts_in_human_play": false,
-        "filename": "weights/cnn/7_3_8_32/anet_weights_295_300.pth",
+        "filename": "weights/cnn/7_3_8_32/anet_weights_383_0.pth",
         "starting_player_symbol": 1,
         "num_simulations_human_play": 400,
-        "human_starting": false
+        "human_starting": true
     },
     "debug": 0,
     "cnn": {
@@ -40,7 +40,7 @@
     },
     "training_type": "alpha_zero_rl",
     "standard_rl": {
-        "initial_epsilon": 0.2,
+        "initial_epsilon": 0.3,
         "final_epsilon": 0.1,
         "final_sigma": 0.5,
         "c_param": 2,
@@ -49,7 +49,7 @@
         "alternate_players_during_training": [1, -1],
         "batch_size": 64,
         "m": 11,
-        "replay_buffer_size": 10000
+        "replay_buffer_size": 20000
     },
     "alpha_zero_rl": {
         "num_iterations": 1000,
@@ -60,7 +60,7 @@
         "evaluation_games": 400,
         "evaluate_interval": 100,
         "c_param": 1.4,
-        "initial_epsilon": 0.15,
+        "initial_epsilon": 0.3,
         "alternate_players_during_training": [1, -1],
         "alternate_players_during_evaluation": true,
         "final_epsilon": 0.1,
