@@ -135,13 +135,15 @@ class RL:
         if self.cfg["start_training_from_file"]:
             print(f"Starting training from best_network: file {self.cfg['start_training_from_file']}")
             best_network_filename = self.cfg["start_training_from_file"]
+            start_iteration = 1+int(best_network_filename.split("_")[-2])
         else:
             best_network_filename = self.acnet.save_weights("initial", final=False)
+            start_iteration = 0
 
         best_network = self.acnet.copy_and_initialize_weights_from_file(best_network_filename)
 
         last_time = time.time()
-        for iteration in range(self.cfg["num_iterations"]):
+        for iteration in range(start_iteration, self.cfg["num_iterations"]):
             losses = np.array([])
             start_time = time.time()
             print(f"\n--- Iteration {iteration}/{self.cfg['num_iterations']} ---")
