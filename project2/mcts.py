@@ -188,7 +188,7 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 class MonteCarloTreeSearch:
-    def __init__(self, state, policy, policy_epsilon, sigma=0.0, c_param=1, debug=False, temperature=1):
+    def __init__(self, state, policy, policy_epsilon, sigma=0.0, c_param=1, debug=False, temperature=1, discount_factor=1):
         self.root = Node(state)
         self.policy = policy
         self.policy_epsilon = policy_epsilon
@@ -196,6 +196,7 @@ class MonteCarloTreeSearch:
         self.sigma = sigma
         self.c_param = c_param
         self.temperature = temperature
+        self.discount_factor = discount_factor
 
     def print_debug(self, message, color):
         if self.debug:
@@ -242,8 +243,10 @@ class MonteCarloTreeSearch:
 
     def backpropagation(self, node, result):
         # self.print_debug(f"Backpropagating result: {result}", Colors.BLUE)
+        discount = 1
         while node is not None:
-            node.update(result)
+            node.update(result * discount)
+            discount *= self.discount_factor
             node = node.parent
 
     # @timing_decorator("MCTS BEST_ACTION", print_interval=100)

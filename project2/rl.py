@@ -221,7 +221,7 @@ class RL:
         epsilon = self.get_epsilon(current_rl_iteration, num_rl_iterations)
         sigma = self.get_sigma(current_rl_iteration, num_rl_iterations)
 
-        mcts = MonteCarloTreeSearch(game_state, policy, policy_epsilon=epsilon, sigma=sigma, c_param=self.cfg["c_param"], temperature=self.cfg["temperature"])
+        mcts = MonteCarloTreeSearch(game_state, policy, policy_epsilon=epsilon, sigma=sigma, c_param=self.cfg["c_param"], temperature=self.cfg["temperature"], discount_factor=self.cfg["discount_factor"])
 
         while not game_state.is_terminal():
             best_action, best_child, action_probs, state_action_value = mcts.best_action(self.cfg['num_simulations_per_move'], return_actions_probs=True, return_state_action_value=True)

@@ -12,9 +12,10 @@
     "tournament_last_n_games": null,
     "mt_threads": 10,
     "start_training_from_file": "weights/cnn/7_3_8_32/anet_weights_446_0.pth",
+    "discount_factor": 0.99,
     "human_against_acnet": {
         "use_mcts_in_human_play": false,
-        "filename": "weights/cnn/7_3_8_32/anet_weights_383_0.pth",
+        "filename": "weights/cnn/7_3_8_32/anet_weights_446_0.pth",
         "starting_player_symbol": 1,
         "num_simulations_human_play": 400,
         "human_starting": true
