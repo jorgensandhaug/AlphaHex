@@ -17,9 +17,9 @@ acnet = ACCNN(
 )
 acnet_onnx = acnet.copy_and_initialize_weights_from_file(filename)
 acnet_onnx.initialize_net_from_onnx(acnet_onnx.compile_model_onnx())
-player = ACNetPlayer(acnet_onnx, 'acnet', use_probs_best_2=False)
+# player = ACNetPlayer(acnet_onnx, 'acnet', use_probs_best_2=False)
 
-# player = MCTSPlayer("mcts_acnet", acnet_onnx, 500)
+player = MCTSPlayer("mcts_acnet", acnet_onnx, 400)
 
 
 
@@ -78,8 +78,6 @@ class MyClient(ActorClient):
         board = board.reshape(7, 7)
         board = np.rot90(board, k=-1)
         
-        # set dtype to np int
-        board = board.astype(np.int64)
         hex_state = Hex(board, player_turn)
         # print(np.array(list(state[i+1:i+7] for i in range(0, 49, 7))))
         # print(hex_state.tostr())
@@ -97,4 +95,4 @@ class MyClient(ActorClient):
 # Initialize and run your overridden client when the script is executed
 if __name__ == '__main__':
     client = MyClient(auth="0a3dcdc9d69b425492749713bbb4f4a7", qualify=False)
-    client.run(mode="league")
+    client.run()#mode="league")
