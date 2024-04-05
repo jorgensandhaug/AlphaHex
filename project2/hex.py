@@ -74,6 +74,9 @@ class Hex:
     def has_winning_path(self, player):
         b = self.board
         size = len(self.board)
+        # set dtype to np int
+        b = b.astype(np.int64)
+        print(b)
         wp = has_winning_path_cython(b, size, player)
         return wp
 

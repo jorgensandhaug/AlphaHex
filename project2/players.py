@@ -61,7 +61,7 @@ class RandomPolicy:
 class MCTSPlayer(Player):
     def __init__(self, name, policy, num_simulations, policy_epsilon=0.0, sigma=0.0, c_param=1.4, debug=False, temperature=0.05, action_prob_specific_temperature=1):
         super().__init__(name)
-        self.mcts = MonteCarloTreeSearch(None, policy, policy_epsilon, sigma, c_param, debug)
+        self.mcts = MonteCarloTreeSearch(None, policy, policy_epsilon, sigma, c_param, debug, temperature=temperature)
         self.num_simulations = num_simulations
         self.previous_best_child = None
         self.temperature = temperature
@@ -78,7 +78,7 @@ class MCTSPlayer(Player):
                     break
 
 
-        best_action, best_child = self.mcts.best_action(self.num_simulations, temperature=self.temperature)
+        best_action, best_child = self.mcts.best_action(self.num_simulations)
         self.previous_best_child = best_child
         return best_action
 
@@ -92,7 +92,7 @@ class MCTSPlayer(Player):
                     self.mcts.root = child
                     break
 
-        best_action, best_child, action_probs, state_action_value = self.mcts.best_action(self.num_simulations, return_actions_probs=True, return_state_action_value=True, temperature=self.temperature, action_prob_specific_temperature=self.action_prob_specific_temperature)
+        best_action, best_child, action_probs, state_action_value = self.mcts.best_action(self.num_simulations, return_actions_probs=True, return_state_action_value=True, action_prob_specific_temperature=self.action_prob_specific_temperature)
         self.previous_best_child = best_child
         return best_action, action_probs
 
