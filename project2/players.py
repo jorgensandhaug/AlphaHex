@@ -44,6 +44,60 @@ class ACNetPlayer(Player):
             return i1*1000000 + i2
         return 0
 
+class CriticOnlyPlayer(Player):
+    def __init__(self, acnet, name):
+        super().__init__(name)
+        self.acnet = acnet
+
+    def get_action(self, state, epsilon=0):
+        legal_actions = state.get_legal_actions()
+        action_values_for_other_player = []
+        for action in legal_actions:
+            next_state = state.perform_action(action)
+            if next_state.has_winning_path(state.player_turn):
+                return action
+
+            value_for_other_player = self.acnet.get_value(next_state) 
+            action_values_for_other_player.append(value_for_other_player)
+
+        best_action_for_current_player = legal_actions[np.argmin(action_values_for_other_player)]
+        return best_action_for_current_player
+
+    def get_action_and_probs(self, state):
+        legal_actions = state.get_legal_actions()
+        action_values_for_other_player = []
+        for action in legal_actions:
+            next_state = state.perform_action(action)
+            if next_state.has_winning_path(state.player_turn):
+                return action, np.zeros(len(legal_actions))
+
+            value_for_other_player = self.acnet.get_value(next_state) 
+            action_values_for_other_player.append(value_for_other_player)
+
+
+        action_probs = 1-np.array(action_values_for_other_player)
+     
+        best_action_for_current_player = legal_actions[np.argmin(action_values_for_other_player)]
+        return best_action_for_current_player, action_probs
+
+    def sort_order(self):
+        if self.name == 'final':
+            return np.inf
+        # is it a number?
+        elif self.name.isnumeric():
+            return int(self.name)
+
+        # else if has form int_int
+        elif '_' in self.name:
+            ints = self.name.split('_')
+            if len(ints) != 2 and not ints[0].isnumeric() and not ints[1].isnumeric():
+                return 0
+            i1 = int(ints[0])
+            i2 = int(ints[1])
+            return i1*1000000 + i2
+        return 0
+    
+
 class RandomPlayer(Player):
     def __init__(self, name):
         super().__init__(name)
