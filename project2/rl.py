@@ -136,11 +136,16 @@ class RL:
             print(f"Starting training from best_network: file {self.cfg['start_training_from_file']}")
             best_network_filename = self.cfg["start_training_from_file"]
             start_iteration = 1+int(best_network_filename.split("_")[-2])
+
+            # initialize the acnet with the weights from the best network
+            self.acnet = self.acnet.copy_and_initialize_weights_from_file(best_network_filename)
+            
         else:
             best_network_filename = self.acnet.save_weights("initial", final=False)
             start_iteration = 0
 
         best_network = self.acnet.copy_and_initialize_weights_from_file(best_network_filename)
+
 
         last_time = time.time()
         for iteration in range(start_iteration, self.cfg["num_iterations"]):
