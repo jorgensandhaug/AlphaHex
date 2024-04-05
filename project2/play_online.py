@@ -2,7 +2,7 @@
 import numpy as np
 import time
 from actor_critic import ACCNN
-from players import ACNetPlayer, HumanPlayer, MCTSPlayer
+from players import ACNetPlayer, MCTSPlayer, CriticOnlyPlayer
 from hex import Hex
 filename = "weights/cnn/7_3_8_32/anet_weights_446_0.pth"
 
@@ -18,8 +18,9 @@ acnet = ACCNN(
 acnet_onnx = acnet.copy_and_initialize_weights_from_file(filename)
 acnet_onnx.initialize_net_from_onnx(acnet_onnx.compile_model_onnx())
 # player = ACNetPlayer(acnet_onnx, 'acnet', use_probs_best_2=False)
+player = CriticOnlyPlayer(acnet_onnx, 'acnet')
 
-player = MCTSPlayer("mcts_acnet", acnet_onnx, 400)
+# player = MCTSPlayer("mcts_acnet", acnet_onnx, 400)
 
 
 
@@ -84,8 +85,7 @@ class MyClient(ActorClient):
 
         i, j = player.get_action(hex_state)
         # rotate back 90 degrees counter clockwise to get row, col
-        row, col = 6-j, i
-        row, col = int(row), int(col)
+        row, col = int(6-j), int(i)
 
         self.total_time_spent += time.time() - current_time
         self.number_of_moves += 1
@@ -94,5 +94,6 @@ class MyClient(ActorClient):
 
 # Initialize and run your overridden client when the script is executed
 if __name__ == '__main__':
-    client = MyClient(auth="0a3dcdc9d69b425492749713bbb4f4a7", qualify=False)
-    client.run()#mode="league")
+    client = MyClient(auth="0a3dcdc9d69b425492749713bbb4f4a7", qualify=None)
+    client.run(mode="league")
+    # client.run()
