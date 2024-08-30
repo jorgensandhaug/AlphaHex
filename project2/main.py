@@ -1,3 +1,5 @@
+# This file is basically a wrapper for running the different configurations, training, human play, or TOPP using the settings in config.json
+
 import json
 from rl import RL
 from hex import Hex
@@ -6,6 +8,7 @@ import torch.optim as optim
 import torch.nn as nn
 from topp import run_full_tournament
 from play_against_acnet import human_against_acnet
+
 
 def load_config(filename):
     with open(filename, 'r') as f:
@@ -53,19 +56,14 @@ if __name__ == "__main__":
 
     elif config['do_training']:
         cfg = {**config, **rlcfg}
-        cfg["save_interval"] =rlcfg['num_episodes'] // (rlcfg['m']-1) if "m" in rlcfg else None, 
-        # rl = RL(acnet, initial_game_state, save_interval=config['num_episodes'] // (config['m']-1), use_conv_representation=config['type_net'] == "cnn")
+        cfg["save_interval"] = (rlcfg['num_episodes'] // (rlcfg['m']-1)) if "m" in rlcfg else None
         rl = RL(
             acnet, 
             initial_game_state, 
             cfg
         )
         if config['training_type'] == "standard_rl":
-            rl.run_simulations_and_train_policy(
-                num_episodes=config['standard_rl']['num_episodes'], 
-                num_simulations=config['standard_rl']['num_simulations'], 
-                batch_size=config['standard_rl']['batch_size'], 
-            )
+            rl.run_simulations_and_train_policy()
 
         elif config['training_type'] == "alpha_zero_rl":
             rl.run_iterations()

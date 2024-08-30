@@ -4,6 +4,7 @@ import time
 from actor_critic import ACCNN
 from players import ACNetPlayer, MCTSPlayer, CriticOnlyPlayer
 from hex import Hex
+# Best model trained so far
 filename = "weights/cnn/7_3_8_32/anet_weights_446_0.pth"
 
 acnet = ACCNN(
@@ -20,7 +21,7 @@ acnet_onnx.initialize_net_from_onnx(acnet_onnx.compile_model_onnx())
 # player = ACNetPlayer(acnet_onnx, 'acnet', use_probs_best_2=False)
 player = CriticOnlyPlayer(acnet_onnx, 'acnet')
 
-# player = MCTSPlayer("mcts_acnet", acnet_onnx, 400)
+# player = MCTSPlayer("mcts_acnet", acnet_onnx, 2800, sigma=1, policy_epsilon=0, c_param=0.5, temperature=0)
 
 
 
@@ -94,6 +95,6 @@ class MyClient(ActorClient):
 
 # Initialize and run your overridden client when the script is executed
 if __name__ == '__main__':
-    client = MyClient(auth="0a3dcdc9d69b425492749713bbb4f4a7", qualify=None)
+    client = MyClient(auth="8a3f3ae1bbd64b628669ff5654a5652b", qualify=False)
     client.run(mode="league")
     # client.run()

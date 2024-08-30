@@ -1,3 +1,5 @@
+# This file is used to build the Cython extension module.
+
 from setuptools import setup
 from setuptools.extension import Extension
 from Cython.Build import cythonize

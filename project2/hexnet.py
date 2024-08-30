@@ -14,13 +14,6 @@ class ConvBlock(nn.Module):
         x = self.relu(x)
         return x
 
-    def eval_all(self):
-        # Set all layers to eval mode
-        self.eval()
-        self.conv.eval()
-        self.bn.eval()
-        self.relu.eval()
-
 class ConvBlockWithoutRelu(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(ConvBlockWithoutRelu, self).__init__()
@@ -31,12 +24,6 @@ class ConvBlockWithoutRelu(nn.Module):
         x = self.bn(self.conv(x))
         return x
         
-    
-    def eval_all(self):
-        # Set all layers to eval mode
-        self.eval()
-        self.conv.eval()
-        self.bn.eval()
     
 
 class ResidualBlock(nn.Module):
@@ -53,14 +40,9 @@ class ResidualBlock(nn.Module):
         x = F.relu(x)
         return x
 
-    def eval_all(self):
-        # Set all layers to eval mode
-        self.eval()
-        self.conv1.eval_all()
-        self.conv2.eval_all()
 
 
-
+# This is the final best perfomring CNN architecture used in the OHT. It is largelyl based on https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-365f5abf67e0
 class HexNet(nn.Module):
     def __init__(self, size, in_channels, num_residual_blocks, num_filters, policy_output_dim, kernel_size=3, stride=1, padding=1, device="cpu"):
         super(HexNet, self).__init__()
@@ -69,7 +51,7 @@ class HexNet(nn.Module):
         self.residual_blocks = nn.ModuleList([ResidualBlock(num_filters, kernel_size, stride, padding) for _ in range(num_residual_blocks)])
 
         self.policy_head = nn.Sequential(
-            ConvBlock(num_filters, 2, kernel_size=1, stride=1, padding=0), # TODO: figure out if to use 2 as output channels here or maybe 32 or something
+            ConvBlock(num_filters, 2, kernel_size=1, stride=1, padding=0),
             nn.Flatten(),
             nn.Linear(2 * size**2, policy_output_dim),
         )
@@ -78,7 +60,7 @@ class HexNet(nn.Module):
             ConvBlock(num_filters, 1, kernel_size=1, stride=1, padding=0),
             nn.Flatten(),
             nn.Linear(size**2, 1),
-            nn.Tanh()
+            nn.Tanh() #TODO: change to sigmoid
         )
 
         # save all the other parameters
@@ -103,21 +85,11 @@ class HexNet(nn.Module):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        # Possibly remove or handle non-serializable attributes here
-        # For example, if you have an attribute that's a lambda function:
-        # if 'my_lambda' in state:
-        #     del state['my_lambda']
         return state
 
 
-    def eval_all(self):
-        # Set all layers to eval mode
-        self.eval()
-        for layer in self.residual_blocks:
-            layer.eval_all()
-        
 
-
+# This is a simpler feedforward neural network
 class SimpleHexNet(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_layers, activation_functions, device="cpu"):
         super(SimpleHexNet, self).__init__()
@@ -172,9 +144,5 @@ class SimpleHexNet(nn.Module):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        # Possibly remove or handle non-serializable attributes here
-        # For example, if you have an attribute that's a lambda function:
-        # if 'my_lambda' in state:
-        #     del state['my_lambda']
         return state
 

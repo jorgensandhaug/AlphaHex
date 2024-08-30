@@ -29,10 +29,11 @@ def run_full_tournament(acnet, folder_name, cfg):
             continue
         name = file.split('.')[0].split('weights_')[-1]
         acnet_clone = acnet.copy_and_initialize_weights_from_file(f"{folder_name}/{file}")
-        player = ACNetPlayer(acnet_clone, name, use_probs_best_2=cfg["use_probs_best_2_in_topp"])
-        player.acnet.initialize_net_from_onnx(player.acnet.compile_model_onnx())
+        acnet_clone.initialize_net_from_onnx(acnet_clone.compile_model_onnx())
         if use_mcts and num_simulations_per_move is not None:
-            player = MCTSPlayer(name, player, num_simulations=num_simulations_per_move, policy_epsilon=0.0, sigma=0.0, c_param=1, debug=False)
+            player = MCTSPlayer(name, acnet, num_simulations=num_simulations_per_move, policy_epsilon=0.05, sigma=0.0, c_param=1, debug=False, temperature=0)
+        else:
+            player = ACNetPlayer(acnet_clone, name, use_probs_best_2=cfg["use_probs_best_2_in_topp"])
         players.append(player)
 
     players.append(RandomPlayer('random'))
@@ -49,7 +50,7 @@ def run_full_tournament(acnet, folder_name, cfg):
     def play_against(player1, player2, size, num_episodes, starting_player_symbol):
         initial_game_state = Hex(Hex.initialize_game(size), starting_player_symbol)
         policies = {starting_player_symbol: player1, -starting_player_symbol: player2}
-        wins = run(initial_game_state, policies, num_episodes, debug=False, use_tqdm=False)
+        wins = run(initial_game_state, policies, num_episodes, debug=cfg["debug"], use_tqdm=False)
         win_rate = wins/num_episodes
         # win rate percentage rounded to 2 decimals
         return win_rate
@@ -61,11 +62,9 @@ def run_full_tournament(acnet, folder_name, cfg):
     # round robin tournament
     for i in range(len(players)):
         # print a big header with the name of the player that is now going to play against all other players
-        # how to print big header? Use termcolor and big font
         print(f"\n\n{colored(f'Player {players[i].name} is now playing against all other players', 'yellow', attrs=['bold'])}\n\n")
 
         for j in range(i+1, len(players)):
-            # print(f"Player {players[i].name} as player 1 (starting player) vs Player {players[j].name}")
             # Player i starts as 1
             win_rate_i_starting = play_against(players[i], players[j], size, num_games//4, 1)
             win_rate_j_starting = play_against(players[j], players[i], size, num_games//4, 1)
@@ -88,8 +87,6 @@ def run_full_tournament(acnet, folder_name, cfg):
             win_rates_second[i, j] = 1 - (win_rate_j_starting + win_rate_j_starting_neg) / 2
             win_rates_second[j, i] = 1 - (win_rate_i_starting + win_rate_i_starting_neg) / 2
 
-    # print(win_rates_starting)
-    # print(win_rates_second)
 
     # remove diagonal from all win_rates_starting[i] and win_rates_second[i]
     win_rates_starting = np.array([win_rates_starting[i][np.arange(len(win_rates_starting[i])) != i] for i in range(len(win_rates_starting))])

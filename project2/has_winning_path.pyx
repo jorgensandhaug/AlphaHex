@@ -74,6 +74,7 @@ cdef dict memo = {}
 #@cython.wraparound(False)   # Deactivate negative indexing.
 cpdef bint has_winning_path_cython(np.ndarray[int, ndim=2] b, int size, int player):
     #logger.info(f'Inputs: b={b}, size={size}, player={player}, direction={directions}')
+    # THIS MEMOIZATION IS NOT USED DUE TO IT ACTUALLY BEING SLOWER
     # Add a dictionary to store previous results
 
     # Create a mask of the board where the player's pieces are
@@ -137,8 +138,9 @@ cpdef bint has_winning_path_cython(np.ndarray[int, ndim=2] b, int size, int play
                             uf.union(current, neighbor)
     
     
-    # Store the result in the memo dictionary before returning it
     res = uf.find(virtual_node_start) == uf.find(virtual_node_end)
+
+    # Store the result in the memo dictionary before returning it
     #memo[mask_bytes] = res
     return res
 

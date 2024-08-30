@@ -1,4 +1,5 @@
-from players import ACNetPlayer, HumanPlayer, MCTSPlayer
+# This code allows the user to play against the trained ACNet model. The user can specify the filename of the weights to use for the ACNet model. 
+from players import ACNetPlayer, HumanPlayer, MCTSPlayer, CriticOnlyPlayer
 from hex import Hex
 from gamesim import run
 
@@ -8,7 +9,13 @@ def human_against_acnet(acnet, cfg):
     acnet_onnx.initialize_net_from_onnx(acnet_onnx.compile_model_onnx())
     # acnet_onnx.initialize_net_from_jit(acnet_onnx.compile_model_jit())
     
-    robo = MCTSPlayer("mcts_acnet", acnet_onnx, cfg.get('num_simulations_human_play', 500)) if cfg['use_mcts_in_human_play'] else ACNetPlayer(acnet_onnx, 'acnet', use_probs_best_2=False)
+    if cfg['use_mcts_in_human_play']:
+        robo = MCTSPlayer("mcts_acnet", acnet_onnx, cfg.get('num_simulations_human_play', 500))
+    elif cfg['use_critic_only_in_human_play']:
+        robo = CriticOnlyPlayer(acnet_onnx, 'acnet_critic_only')
+    else:
+        robo = ACNetPlayer(acnet_onnx, 'acnet', use_probs_best_2=False)
+
     human = HumanPlayer('human')
     players = []
     if cfg['human_starting']:

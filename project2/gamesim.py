@@ -1,7 +1,7 @@
 from players import HumanPlayer
 from tqdm import tqdm
 
-# game sim to play a game. The game state, policy, number of simulations, number of episodes, and debug are all given in the run function
+# game sim to play a game. The game state, policy, number of simulations, number of episodes, and debug are all given in the run function. This function is used in many other files to run the game simulations and get results with different players/policies.
 def run(initial_game_state, policies, num_games, debug, use_tqdm=True, pass_previous_actions_to_human_player=False):
     wins = 0
     starting_player = initial_game_state.player_turn
@@ -40,7 +40,7 @@ def run(initial_game_state, policies, num_games, debug, use_tqdm=True, pass_prev
                 first_action = best_action
 
             if debug==2:
-                print(f"Player {player} takes action {best_action} piece(s)")
+                print(f"Player {player} takes action {best_action}")
 
 
         if debug:

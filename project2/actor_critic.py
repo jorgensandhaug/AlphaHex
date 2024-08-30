@@ -14,6 +14,7 @@ import io
 from hex import Hex
 
 
+# Wrapper for onnx inference session
 class ONNXForwardFunction:
     def __init__(self, ort_session):
         self.ort_session = ort_session
@@ -59,32 +60,19 @@ class ActorCritic():
         else:
             raise Exception(f"Unknown net class: {self.net_class}")
 
-        # if self.use_onnx:
-        #     x = np.expand_dims(state.astype(np.float32), axis=0)
-        #     # print("x: ", x)
-        #     return x
-
         x = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)  # Add batch dimension
         if self.use_onnx:
             x = self.to_numpy(x)
-        # print(f"x: {x}")
+
         return x
 
     def to_numpy(self, tensor):
         return tensor.detach().cpu().numpy() if tensor.requires_grad else tensor.cpu().numpy()
 
     def example_net_input(self):
-        p1 = Hex(Hex.initialize_game(self.size), 1)
-        # set the board to a random state, each cell is either 0 or 1 or -1
-        p1.board = np.random.choice([-1, 0, 1], size=(self.size, self.size))
-
-
-        p2 = Hex(Hex.initialize_game(self.size), -1)
-        p2.board = np.random.choice([-1, 0, 1], size=(self.size, self.size))
-
-
+        # Return an example input to the network
+        p1 = Hex.example_net_input(self.size)
         return self.state_to_torch(p1)
-        # return (self.state_to_torch(p1), self.state_to_torch(p2), )
 
     def forward(self, state):
         return self.net(state)
@@ -107,22 +95,10 @@ class ActorCritic():
 
         self.optimizer.zero_grad()
 
-        # policy_loss.backward(retain_graph=True)
-        # value_loss.backward()
-        # self.optimizer.step()
-
-        total_loss = 2 * policy_loss + value_loss # TODO: add regularization term here
+        # Weighting is a bit arbitrary, but it seems to work fine for training the network and both heads
+        total_loss = 2 * policy_loss + value_loss # TODO: add regularization term
         total_loss.backward() 
         self.optimizer.step()
-
-        # print(self.optimizer.param_groups[0]['lr'])
-        # pick 1 of the cases in minibatch to print oth state, action_probs and predicted_logits
-        # print(f"State: {states[0]}")
-        # print(f"Action probs: {action_probs[0]}")
-        # print(f"Predicted logits: {predicted_logits[0]}")
-        # print(f"Value for this case: {predicted_state_action_values[0].item()}")
-        # get the loss for the first case in the minibatch, but not the sum of the losses
-        # print(f"Policy loss for this case: {nn.CrossEntropyLoss(reduction='none')(predicted_logits[0].unsqueeze(0), action_probs[0].unsqueeze(0))[0].item()}")
 
         return policy_loss.item(), value_loss.item()
 
@@ -133,13 +109,19 @@ class ActorCritic():
         filename = f"{self.save_folder}/anet_weights_{'final' if final else episode}.pth"
         torch.save(self.net.state_dict(), filename)
         print(f"Model weights saved to {filename}")
-        
+
+        # Save to ONNX
+        onnx_filename = f"{self.save_folder}/anet_weights_{'final' if final else episode}.onnx"
+        self.compile_model_onnx(save_path=onnx_filename)
+        print(f"Model saved in ONNX format to {onnx_filename}")
+
         # close the file
         return filename
 
     
     # @timing_decorator("ANET get_action", print_interval=500)
     def get_action(self, state, epsilon=0.0):
+        # Get the action based on the policy network
         legal_actions_mask = state.get_legal_actions_flat_mask()
 
         legal_indices = np.nonzero(legal_actions_mask)[0]
@@ -154,6 +136,7 @@ class ActorCritic():
         with torch.no_grad():
             policy_logits, _ = self.forward(self.state_to_torch(state))  # Add batch dimension
 
+        # Handle differently based on whether we are using ONNX or not
         if self.use_onnx:
             policy_probs = softmax(policy_logits, axis=1)
             policy_probs = policy_probs.squeeze(0)
@@ -161,16 +144,8 @@ class ActorCritic():
             policy_probs = torch.softmax(policy_logits, dim=1)
             policy_probs = policy_probs.squeeze(0).cpu().numpy()  # Remove batch dimension and convert to numpy
 
-        # print(f"legal actions: {legal_actions_mask}")
         # use legal_actions_mask as mask to remove illegal actions
         legal_action_probs = policy_probs * legal_actions_mask
-        # rescale the probabilities to sum to 1
-        # print(f"legal action probs: {legal_action_probs}")
-        # print(f"legal actions_mask: {legal_actions_mask}")
-        # print(f"policy probs: {policy_probs}")
-
-        # legal_action_probs = legal_action_probs / np.sum(legal_action_probs) # Not necessary when selecting action with argmax 
-        
 
         # choose action based on legal_action_probs
         action_index = np.argmax(legal_action_probs)
@@ -179,11 +154,13 @@ class ActorCritic():
         return action
 
     def get_value(self, state):
+        # Get the value of the state
         with torch.no_grad():
             _, value = self.forward(self.state_to_torch(state))
         return value.squeeze(0).item()  # Remove batch dimension
 
     def get_action_and_probs(self, state):
+        # Get the action based on the policy network and the probabilities of each action
         legal_actions_mask = state.get_legal_actions_flat_mask()
 
         legal_indices = np.nonzero(legal_actions_mask)[0]
@@ -215,8 +192,6 @@ class ActorCritic():
     
     def get_action_from_best_2_based_on_probs(self, state):
         legal_actions_mask = state.get_legal_actions_flat_mask()
-
-        # legal_indices = np.nonzero(legal_actions_mask)[0]
 
         with torch.no_grad():
             policy_logits, _ = self.forward(self.state_to_torch(state))
@@ -260,21 +235,16 @@ class ActorCritic():
 
 
 
-    def compile_model_onnx(self):
-        # Ensure the model is in evaluation mode
-        # self.net.eval()
-        # print(self.net.training)
-
-        # An example input you would normally provide to your models's forward() method.
+    def compile_model_onnx(self, save_path=None):
+        # An example input normally provided to the models's forward() method.
         example_input = self.example_net_input()
 
-        # File-like object to store ONNX model
+        # buffer object to store ONNX model
         onnx_model_buffer = io.BytesIO()
 
-        # TODO: quantize the model before exporting to ONNX
+        # TODO: quantize the model before exporting to ONNX?
 
         # Export the model to ONNX format
-        # model = torch.jit.trace(self.net.eval(), example_input)
         torch.onnx.export(self.net.eval(), example_input, onnx_model_buffer, opset_version=17,
         export_params=True,
         do_constant_folding=True,  # whether to execute constant folding for optimization
@@ -293,17 +263,19 @@ class ActorCritic():
         # Get the serialized ONNX model
         model_serialized = onnx_model_buffer.getvalue()
 
-        # self.net.train()
+        # Optionally save the model to a file
+        if save_path is not None:
+            with open(save_path, 'wb') as f:
+                f.write(model_serialized)
 
         return model_serialized
 
+
+
     def compile_model_jit(self):
         # use torchscript and jit to compile the acnet for maximum inference speed
-        
-        # ensure model is ine val mode
-        # self.net.eval()
 
-        # An example input you would normally provide to your models's forward() method.
+        # An example input normally provided to the models's forward() method.
         example_input = self.example_net_input()
         # print(f"Example input size: {example_input}")
         
@@ -314,8 +286,6 @@ class ActorCritic():
         model_buffer = io.BytesIO()
         torch.jit.save(model, model_buffer)
         model_serialized = model_buffer.getvalue()
-
-        # self.net.train()
 
         return model_serialized
 
@@ -340,26 +310,6 @@ class ActorCritic():
         assert np.allclose(original_policy.detach().numpy(), jit_output_policy.detach().numpy(), atol=1e-6, rtol=1e-3), f"Original policy: {original_policy}, JIT policy: {jit_output_policy}"
 
     def initialize_net_from_onnx(self, model_serialized):
-        # check if the ONNX file is correct
-        # pytorch_state_dict = self.net.state_dict()
-
-        # # To print or inspect specific weights, you can do something like:
-        # for name, weight in pytorch_state_dict.items():
-        #     print(f"TORCH {name}: {weight.size()}, {weight.dtype}")#, {weight}")
-
-
-        #         # Load the ONNX model
-        # onnx_model = onnx.load(io.BytesIO(model_serialized))
-
-        # # Initializers contain the weights
-        # initializers = onnx_model.graph.initializer
-
-        # # Print or inspect the weights
-        # for initializer in initializers:
-        #     # Convert ONNX tensor to numpy array
-        #     weights = onnx.numpy_helper.to_array(initializer)
-        #     print(f"ONNX {initializer.name}: {weights.shape}, {weights.dtype}")
-
         # Create an inference session with ONNX runtime directly from the serialized model
         ort_session = ort.InferenceSession(model_serialized, providers=['CPUExecutionProvider'])
 
@@ -369,7 +319,7 @@ class ActorCritic():
 
 
         # test that the model works and gives the same output as the original model
-        # self.test_onnx_model_gives_same_output_as_original_model() #TODO REMOVE THIS LINE due to the time it takes to run
+        # self.test_onnx_model_gives_same_output_as_original_model() #Commented this line due to the time it takes to run
 
     def test_onnx_model_gives_same_output_as_original_model(self):
         # Test that the ONNX model gives the same output as the original model
@@ -390,13 +340,14 @@ class ActorCritic():
     def use_uncompiled_network(self):
         # make sure the ONNX session is closed first
         if self.use_onnx:
+            # Instantiate the original network from the saved torch model
             self.net = self.net_non_compiled
             self.use_onnx = False
 
 
     
 
-# Now we define the ACCNN class which uses HexNet as its underlying model.
+# ACCNN class uses HexNet as its underlying model.
 class ACCNN(ActorCritic):
     def __init__(self, size, in_channels, num_residual_blocks, num_filters, policy_output_dim, kernel_size, optimizer_class=optim.Adam, optimizer_params={}, save_folder=None, device="cpu"):
         net = HexNet(size, in_channels, num_residual_blocks, num_filters, policy_output_dim, kernel_size=kernel_size, device=device)
@@ -410,7 +361,7 @@ class ACCNN(ActorCritic):
         return copy
     
     def copy(self):
-        # clone the acnet, then load the weights from filename
+        # clone the acnet
         copy = ACCNN(self.size, self.net.in_channels, self.net.num_residual_blocks, self.net.num_filters, self.net.policy_output_dim, self.net.kernel_size, device=self.net.device)
         copy.net.load_state_dict(self.net.state_dict())
         return copy
@@ -419,6 +370,7 @@ class ACCNN(ActorCritic):
 
 
 
+# The ACNET class uses SimpleHexNet as its underlying model.
 class ACNET(ActorCritic):
     def __init__(self, state_dim, action_dim, hidden_layers, activation_functions, optimizer_class=optim.Adam, optimizer_params={}, save_folder=None, device="cpu", size=None):
         net = SimpleHexNet(state_dim, action_dim, hidden_layers, activation_functions, device=device)

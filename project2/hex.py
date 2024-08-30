@@ -28,19 +28,20 @@ class Hex:
         self.board_flat = board.flatten()
         self.player_turn = player_turn
 
-        #self.board_tuple = (self.player_turn, ) + tuple(map(tuple, self.board))
-
+        # try to make things more efficient by storing the legal actions instead of calculating them every time
         if legal_actions is None:
             self.legal_actions = list(map(tuple, np.argwhere(self.board == 0)))
         if legal_actions_flat_mask is None:
             self.legal_actions_flat_mask = (self.board.flatten() == 0).astype(np.int32)
 
-        self.is_memoized = False
+        # This was used for memoization of paths, but it was actually slower than recalculating the paths (because the recalculation is very fast in Cython)
+        # self.is_memoized = False
 
     def get_legal_actions(self):
         return self.legal_actions
 
     def get_legal_actions_flat_mask(self):
+        # A flat version of legal actions
         return self.legal_actions_flat_mask
 
     def state_equals(self, other):
@@ -50,6 +51,7 @@ class Hex:
         return self.player_turn == 1
 
     def perform_action(self, action):
+        # Performs the action from the current state and returns the new state
         i, j = action
         new_board = self.board.copy()
         new_board[i][j] = self.player_turn
@@ -58,6 +60,8 @@ class Hex:
         return new_state
 
     def get_result(self):
+        # Returns the result of the game. If the game is not over, returns 0. If player 1 wins, returns 1. If player -1 wins, returns -1.
+
         # Use memoization to avoid recalculating paths
         # if self.is_memoized:
         #     result = Hex.memoized_paths.get(self.board_tuple)
@@ -68,10 +72,12 @@ class Hex:
         return result
 
     def is_terminal(self):
+        # Returns True if the game is over, False otherwise
         return self.get_result() != 0
 
     # @timing_decorator("has_winning_path_cython", print_interval=1000)
     def has_winning_path(self, player):
+        # Check if the player has a winning path
         b = self.board
         size = len(self.board)
 
@@ -80,37 +86,6 @@ class Hex:
         wp = has_winning_path_cython(b, size, player)
         return wp
 
-    # # @timing_decorator("has_winning_path", print_interval=100000)
-    # def has_winning_path(self, player): #TODO: optimize this drastically
-    #     size = len(self.board)
-    #     uf = UnionFind(size * size + 2)  # Including two virtual nodes
-    #     virtual_node_start, virtual_node_end = size * size, size * size + 1
-
-    #     self.connect_virtual_nodes(uf, size, player, virtual_node_start, virtual_node_end)
-    #     # Check if the virtual nodes are connected
-    #     return uf.find(virtual_node_start) == uf.find(virtual_node_end)
-
-    
-    # # # @timing_decorator("connect_virtual_nodes", print_interval=100000)
-    # def connect_virtual_nodes(self, uf, size, player, virtual_node_start, virtual_node_end):
-    #     for i in range(size):
-    #         for j in range(size):
-    #             if self.board[i][j] == player:
-    #                 current = i * size + j
-    #                 # Connect with virtual nodes if on the corresponding edge
-    #                 if (player == 1 and j == 0) or (player == -1 and i == 0):
-    #                     uf.union(current, virtual_node_start)
-    #                 if (player == 1 and j == size - 1) or (player == -1 and i == size - 1):
-    #                     uf.union(current, virtual_node_end)
-
-    #                 # Connect with adjacent cells of the same player
-    #                 for di, dj in [(0, 1), (1, 0), (1, -1)]:#, (-1, 0), (0, -1), (-1, 1)]:
-    #                     ni, nj = i + di, j + dj
-    #                     if 0 <= ni < size and 0 <= nj < size and self.board[ni][nj] == player:
-    #                         neighbor = ni * size + nj
-    #                         uf.union(current, neighbor)
-
-
     @staticmethod
     def initialize_game(size):
         # use numpy array for faster indexing
@@ -118,18 +93,13 @@ class Hex:
 
     @staticmethod
     def other_player(player):
+        # Returns the other player
         return -player
 
     def clone(self):
+        # Returns a copy of the current state
         return Hex(self.board.copy(), self.player_turn)
 
-    # def __str__(self):
-    #     board_str = ""
-    #     for i in range(len(self.board)):
-    #         board_str += " " * i + " ".join([str(int(x)) for x in self.board[i]]) + "\n"
-    #     return f"Player Turn: {self.player_turn}\nBoard:\n{board_str}"
-
-    
 
     def __str__(self):
         return self.tostr()
@@ -154,11 +124,7 @@ class Hex:
                     return round(((r - 8) / 247) * 24) + 232
                 return 16 + (36 * round(r / 255 * 5)) + (6 * round(g / 255 * 5)) + round(b / 255 * 5)
 
-            # Create a values array with strings that are colored based on the value (0 to 1)
-            # should be continuous from red to green, but make small differences more visible
-            # print(probs_array)
             values = probs_array
-            #print(values)
             values = (values - values.min()) / (values.max() - values.min())
             # make small differences more visible
             values = values**10
@@ -205,6 +171,7 @@ class Hex:
 
     @staticmethod
     def test_has_winning_path():
+        # Testing function used during development
         def print_board(board):
             for row in board:
                 print(' '.join(str(cell) for cell in row))
@@ -245,13 +212,11 @@ class Hex:
                 raise Exception("No player has a winning path but there should be one")
 
     def nn_representation(self):
-        b = self.board.flatten() #* self.player_turn # TODO: sure?
-        # player as one-hot
-        # p = np.array([1, 0]) if self.player_turn == 1 else np.array([0, 1])
+        # Simple flat representation of the board with the player turn as the first element (0 or 1) # This may not be optimal, but the focus of this project has mainly been on the convolutional neural network instead
+
+        b = self.board.flatten() 
         p = np.array([(self.player_turn+1)/2])
-        #p = np.array([self.player_turn])
         return np.concatenate((p, b))
-        #return b
 
     def conv_representation(self):
         # stack of 3 boards, one for each players pieces, and one all 1s if player is 1, all 0s if player is -1
@@ -262,15 +227,17 @@ class Hex:
             #self.board == 0,
             np.ones_like(self.board) if self.player_turn == 1 else np.zeros_like(self.board)
             ),
-            axis=0).astype(np.float32) # TODO: figure out if axis=0 is correct or if use axis=2
+            axis=0).astype(np.float32) 
         return enc
 
 
     def nn_representation_size(self):
-        return len(self.board.flatten()) + 1 # 2
+        # Add 1 for the player turn
+        return len(self.board.flatten()) + 1 
 
     
     def action_index_to_action(self, action_index):
+        # mapping from action index to action tuple
         i = action_index // len(self.board)
         j = action_index % len(self.board)
         return (i, j)
@@ -279,16 +246,27 @@ class Hex:
         return len(self.board) * len(self.board)
 
     def action_to_action_index(self, action):
+        # mapping from action tuple to action index
         # action is a tuple
         i, j = action
         return i * len(self.board) + j
 
     def is_starting_position(self):
+        # Returns True if the board is empty, False otherwise
         return np.all(self.board == 0)
+
+    @staticmethod
+    def example_net_input(size):
+        # Returns an example input for the neural network
+        p1 = Hex(Hex.initialize_game(size), 1)
+        # set the board to a random state, each cell is either 0 or 1 or -1
+        p1.board = np.random.choice([-1, 0, 1], size=(size, size))
+        return p1
         
 
     
     def get_diags(self) -> list[tuple[int, int]]:
+        # Helper function for visualizing the board
         se_diag_starts = [(0, i) for i in range(
             self.board_size-1, -1, -1)] + [(i, 0) for i in range(1, self.board_size)]
         diag_lengths_top = [i for i in range(1, self.board_size)]
@@ -299,6 +277,8 @@ class Hex:
 
 
     def plot(self) -> None:
+        # Ugly function for plotting the board
+
         plt.figure(2)
         plt.clf()
         ## Set axis limits
@@ -314,11 +294,7 @@ class Hex:
                 G.add_node(str(pos),pos=(((self.board_size*2-1-len(diag)*2+1)//2)/2+j, i*math.sqrt(3)/2))
                 piece = self.board[pos[0], pos[1]]
                 color_map.append('red' if piece == 1 else 'blue' if piece==-1 else 'yellow')
-        # for (node_1, node_2) in zip(self.win_path, self.win_path[1:]):
-        #     size_map[list(G.nodes).index(str(node_1))] = 300
-        #     color = ('blue' if self.winner == Player.P1 else 'red')
-        #     G.add_edge(str(node_1), str(node_2), color=color, weight =7)
-        # size_map[list(G.nodes).index(str(node_2))] = 300
+
         edges = G.edges()
         colors = [G[u][v]['color'] for u,v in edges]
         weights = [G[u][v]['weight'] for u,v in edges]
@@ -375,8 +351,8 @@ if __name__ == "__main__":
             return random.choice(actions)
 
     # Initialize the Hex game state
-    size = 4  # You can vary this for different tests
-    starting_player = 1  # You can vary this as well
+    size = 4  
+    starting_player = 1  
     mcts_players = [1, -1]
     player_turn = starting_player
 
@@ -405,9 +381,6 @@ if __name__ == "__main__":
             if player in mcts_players:
                 best_action, best_child = mcts.best_action(num_simulations)
 
-                # state_after = hex_game.perform_action(best_action) # TODO: this is temporary
-                # best_child = Node(state_after)
-
             else:
                 best_action = random_policy(hex_game)
                 # new root
@@ -432,7 +405,6 @@ if __name__ == "__main__":
             # Set the best child as the new root for the mcts
             mcts.root = best_child
             mcts.root.parent = None  # Detach the new root from its parent
-            # mcts.root.state.player_turn = hex_game.player_turn  # Update the player turn
         
     print(f"Player 1 won {wins} out of {num_episodes} games. Win rate: {wins/num_episodes}")
 
